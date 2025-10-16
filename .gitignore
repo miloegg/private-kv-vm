@@ -1,0 +1,9 @@
+# generate ignore file for terraform deployments
+.terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl
+*.txt
+
+tfplan
