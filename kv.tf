@@ -50,14 +50,14 @@ module "avm_res_keyvault_vault" {
   }
 
   wait_for_rbac_before_key_operations = {
-    create = "60s"
+    create = "120s"
   }
   wait_for_rbac_before_secret_operations = {
-    create = "60s"
+    create = "120s"
   }
 }
 
-
+/*
 resource "azapi_resource_action" "put_accessPolicy" {
   type        = "Microsoft.KeyVault/vaults/accessPolicies@2023-02-01"
   resource_id = "${module.avm_res_keyvault_vault.resource_id}/accessPolicies/add"
@@ -72,10 +72,10 @@ resource "azapi_resource_action" "put_accessPolicy" {
               "ManageContacts",
             ]
             keys = [
-              "Get", "Create", "Delete", "List", "Restore", "Recover", "UnwrapKey", "WrapKey", "Purge", "Encrypt", "Decrypt", "Sign", "Verify"
+              "All",
             ]
             secrets = [
-              "Get",
+              "All",
             ]
             storage = [
             ]
@@ -86,7 +86,9 @@ resource "azapi_resource_action" "put_accessPolicy" {
     }
   }
   response_export_values = ["*"]
+  depends_on             = [module.avm_res_keyvault_vault]
 }
+*/
 
 data "azapi_resource_id" "key" {
   type      = "Microsoft.KeyVault/vaults/keys@2023-02-01"
@@ -106,7 +108,8 @@ resource "azapi_resource_action" "put_key" {
     }
   }
   response_export_values = ["*"]
-  depends_on             = [azapi_resource_action.put_accessPolicy]
+  depends_on             = [module.avm_res_keyvault_vault]
+  # depends_on             = [azapi_resource_action.put_accessPolicy]
 }
 
 resource "tls_private_key" "this" {
@@ -114,12 +117,34 @@ resource "tls_private_key" "this" {
   rsa_bits  = 4096
 }
 
-resource "azurerm_key_vault_secret" "admin_ssh_key" {
-  key_vault_id = module.avm_res_keyvault_vault.resource_id
-  name         = "azureuser-ssh-private-key"
-  value        = tls_private_key.this.private_key_pem
-
-  depends_on = [
-    module.avm_res_keyvault_vault
-  ]
+data "azapi_resource_id" "sshprivatekey" {
+  type      = "Microsoft.KeyVault/vaults/secrets@2023-02-01"
+  parent_id = module.avm_res_keyvault_vault.resource_id
+  name      = "sshprivatekey"
 }
+
+resource "azapi_resource_action" "put_secret" {
+  type        = "Microsoft.KeyVault/vaults/secrets@2023-02-01"
+  resource_id = data.azapi_resource_id.sshprivatekey.id
+  method      = "PUT"
+  body = {
+    properties = {
+      value = tls_private_key.this.private_key_pem
+    }
+  }
+  response_export_values = ["*"]
+  depends_on             = [module.avm_res_keyvault_vault]
+  # depends_on             = [azapi_resource_action.put_accessPolicy]
+}
+
+
+
+# resource "azurerm_key_vault_secret" "admin_ssh_key" {
+#   key_vault_id = module.avm_res_keyvault_vault.resource_id
+#   name         = "azureuser-ssh-private-key"
+#   value        = tls_private_key.this.private_key_pem
+
+#   depends_on = [
+#     module.avm_res_keyvault_vault
+#   ]
+# }

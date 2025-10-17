@@ -26,6 +26,9 @@ resource "azurerm_disk_encryption_set" "this" {
     type         = "UserAssigned"
     identity_ids = [azurerm_user_assigned_identity.example_identity.id]
   }
+  depends_on = [
+    module.avm_res_keyvault_vault
+  ]
 }
 
 
